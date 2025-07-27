@@ -3,16 +3,17 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import whisper
 import tempfile
+from rapidfuzz import fuzz
 
-# Load smaller multilingual model
-model = whisper.load_model("tiny")  # NOT "tiny.en"
+# Load the small multilingual model
+model = whisper.load_model("tiny")
 
 app = FastAPI()
 
-# ✅ Restrict CORS to your local frontend or production domain
+# CORS: only allow your frontend origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Add your deployed domain here later
+    allow_origins=["http://localhost:3000"],  # replace with production domain later
     allow_credentials=True,
     allow_methods=["POST"],
     allow_headers=["*"],
@@ -27,8 +28,10 @@ async def transcribe(file: UploadFile = File(...), expected: str = Form("")):
     result = model.transcribe(tmp_path, language="fr", task="transcribe")
     actual = result["text"].strip().lower()
     expected = expected.strip().lower()
-    match = actual == expected
-    score = round(100 * (1 - min(len(set(actual.split()) ^ set(expected.split())) / max(len(actual.split()), 1), 1)))
+
+    # Use fuzzy matching to be more tolerant of punctuation/small differences
+    score = fuzz.token_set_ratio(actual, expected)
+    match = score >= 70  # or lower to be even more forgiving
 
     return {
         "actual": actual,
