@@ -3,7 +3,7 @@ from fastapi import FastAPI, UploadFile, File
 import whisper
 import tempfile
 
-model = whisper.load_model("base")  # can also use "small", "medium", etc.
+model = whisper.load_model("tiny")
 
 app = FastAPI()
 
