@@ -13,5 +13,5 @@ async def transcribe(audio: UploadFile = File(...)):
         tmp.write(await audio.read())
         tmp_path = tmp.name
 
-    result = model.transcribe(tmp_path)
+    result = model.transcribe(tmp_path, language="fr")
     return {"text": result["text"]}
