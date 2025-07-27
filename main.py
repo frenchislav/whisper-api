@@ -5,36 +5,46 @@ import whisper
 import tempfile
 from rapidfuzz import fuzz
 
-# Load the small multilingual model
+# Load tiny multilingual model once (do NOT use "tiny.en")
 model = whisper.load_model("tiny")
 
 app = FastAPI()
 
-# CORS: only allow your frontend origin
+# Enable CORS for local frontend only (secure)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # replace with production domain later
+    allow_origins=["http://localhost:3000"],  # replace with prod domain later
     allow_credentials=True,
-    allow_methods=["POST"],
+    allow_methods=["POST", "GET"],
     allow_headers=["*"],
 )
 
+# Whisper transcription endpoint
 @app.post("/transcribe")
 async def transcribe(file: UploadFile = File(...), expected: str = Form("")):
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
 
+    # Force French language
     result = model.transcribe(tmp_path, language="fr", task="transcribe")
+
     actual = result["text"].strip().lower()
     expected = expected.strip().lower()
 
-    # Use fuzzy matching to be more tolerant of punctuation/small differences
+    # Fuzzy match score using token set ratio
     score = fuzz.token_set_ratio(actual, expected)
-    match = score >= 70  # or lower to be even more forgiving
+
+    # More forgiving for short words
+    if len(expected.split()) <= 2:
+        match = score >= 60
+    else:
+        match = score >= 70
+
+    print("EXPECTED:", expected)
+    print("ACTUAL:", actual)
+    print("SCORE:", score)
 
     return {
         "actual": actual,
         "match": match,
-        "score": score,
-    }
